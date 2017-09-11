@@ -1,3 +1,5 @@
+import datetime
+import string
 import httplib2
 import os
 
@@ -13,10 +15,13 @@ except ImportError:
     flags = None
 
 SPREADSHEET_ID = '12IQrtvg-__WQTPhxP96TLXOI7nxIXF6Kcw_aVSAkjqQ'
-SHEET_ID = 0
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Personal CICO recorder'
+CALORIES_IN_ROW = '5'
+WEIGHT_ROW = '2'
+NEW_TDEE_ROW = '6'
+FITBIT_CALORIES_OUT = '7'
 
 
 def get_credentials():
@@ -48,6 +53,20 @@ def get_credentials():
     return credentials
 
 
+def get_column_letter_from_index(zero_indexed_integer):
+    letter = string.lowercase[zero_indexed_integer % 25]
+    copy_of_letter = letter
+    for _ in range(zero_indexed_integer / 25):
+        letter += copy_of_letter
+    return letter.upper()
+
+
+def format_to_range(column, row):
+    cell = column + row
+    cell += ':' + cell
+    return cell
+
+
 def write_to_sheet(calories_in, fitbit_calories_out, weight, new_tdee):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
@@ -56,13 +75,57 @@ def write_to_sheet(calories_in, fitbit_calories_out, weight, new_tdee):
     service = discovery.build('sheets', 'v4', http=http,
                               discoveryServiceUrl=discovery_url)
 
-    range_name = 'A:A'
     result = service.spreadsheets().values().get(
-        spreadsheetId=SPREADSHEET_ID, range=range_name).execute()
+        spreadsheetId=SPREADSHEET_ID, range='1:1').execute()
     values = result.get('values', [])
 
+    yesterday = datetime.date.today() - datetime.timedelta(1)
     if not values:
         print 'No data found.'
     else:
-        for row in values:
-            print row
+        yesterday_column = None
+        today_column = None
+        for i, row in enumerate(values[0]):
+            try:
+                column_date = datetime.datetime.strptime(row, '%m/%d/%Y').date()
+                if column_date == yesterday:
+                    yesterday_column = get_column_letter_from_index(i)
+                    today_column = get_column_letter_from_index(i + 1)
+                    break
+            except ValueError as e:
+                # don't care if blank, move on to next one if it's a date
+                continue
+        if yesterday_column is None or today_column is None:
+            # todo: if date column doesn't exist, add it
+            # todo: copy formulas to new columns
+            pass
+
+        calories_in_range = format_to_range(yesterday_column, CALORIES_IN_ROW)
+        fitbit_tdee_range = format_to_range(yesterday_column, FITBIT_CALORIES_OUT)
+        weight_range = format_to_range(today_column, WEIGHT_ROW)
+        new_tdee_range = format_to_range(today_column, NEW_TDEE_ROW)
+
+        print calories_in_range, fitbit_tdee_range, weight_range, new_tdee_range
+
+        data = [
+            {
+                'range': calories_in_range,
+                'values': [[calories_in]]
+            }, {
+                'range': fitbit_tdee_range,
+                'values': [[fitbit_calories_out]]
+            }, {
+                'range': weight_range,
+                'values': [[weight]]
+            }, {
+                'range': new_tdee_range,
+                'values': [[new_tdee]]
+            }
+        ]
+        body = {
+            'valueInputOption': 'RAW',
+            'data': data
+        }
+        service.spreadsheets().values().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID, body=body).execute()
+
