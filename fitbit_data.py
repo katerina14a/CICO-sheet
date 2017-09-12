@@ -128,7 +128,7 @@ def make_api_call(fitbit_endpoint, access, refresh):
         http_error_message = e.read()
         print "This was in the HTTP error message: " + http_error_message
         # See what the error was
-        if e.code == 401 and http_error_message.find("Access token invalid or expired") > 0:
+        if e.code == 401 and http_error_message.find("Access token expired") > 0:
             get_new_access_token(refresh)
             return False, TOKEN_REFRESHED_OK
         # Return that this didn't work, allowing the calling function to handle it

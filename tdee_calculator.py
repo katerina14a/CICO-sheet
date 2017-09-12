@@ -4,6 +4,9 @@ from bs4 import BeautifulSoup
 
 
 def parse_tdee_website(age, gender, pounds, height, activity_level, body_fat_percentage):
+    if pounds is None or body_fat_percentage is None:
+        return None
+
     endpoint = 'https://tdeecalculator.net/result.php?s=imperial&age={}&g={}&lbs={}&in={}&act={}&bf={}&f=1'.format(
         age, gender, pounds, height, activity_level, body_fat_percentage
     )

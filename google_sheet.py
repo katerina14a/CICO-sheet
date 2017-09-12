@@ -18,10 +18,10 @@ SPREADSHEET_ID = '12IQrtvg-__WQTPhxP96TLXOI7nxIXF6Kcw_aVSAkjqQ'
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Personal CICO recorder'
-CALORIES_IN_ROW = '5'
-WEIGHT_ROW = '2'
-NEW_TDEE_ROW = '6'
-FITBIT_CALORIES_OUT = '7'
+CALORIES_IN_COLUMN = 'E'
+WEIGHT_COLUMN = 'B'
+NEW_TDEE_COLUMN = 'F'
+FITBIT_CALORIES_OUT_COLUMN = 'G'
 
 
 def get_credentials():
@@ -53,14 +53,6 @@ def get_credentials():
     return credentials
 
 
-def get_column_letter_from_index(zero_indexed_integer):
-    letter = string.lowercase[zero_indexed_integer % 25]
-    copy_of_letter = letter
-    for _ in range(zero_indexed_integer / 25):
-        letter += copy_of_letter
-    return letter.upper()
-
-
 def format_to_range(column, row):
     cell = column + row
     cell += ':' + cell
@@ -76,34 +68,36 @@ def write_to_sheet(calories_in, fitbit_calories_out, weight, new_tdee):
                               discoveryServiceUrl=discovery_url)
 
     result = service.spreadsheets().values().get(
-        spreadsheetId=SPREADSHEET_ID, range='1:1').execute()
+        spreadsheetId=SPREADSHEET_ID, range='A:A').execute()
     values = result.get('values', [])
 
     yesterday = datetime.date.today() - datetime.timedelta(1)
     if not values:
         print 'No data found.'
     else:
-        yesterday_column = None
-        today_column = None
-        for i, row in enumerate(values[0]):
+        yesterday_row = None
+        today_row = None
+        for i, row in enumerate(values):
+            if len(row) == 0:
+                continue
             try:
-                column_date = datetime.datetime.strptime(row, '%m/%d/%Y').date()
+                column_date = datetime.datetime.strptime(row[0], '%m/%d/%Y').date()
                 if column_date == yesterday:
-                    yesterday_column = get_column_letter_from_index(i)
-                    today_column = get_column_letter_from_index(i + 1)
+                    yesterday_row = str(i + 1)
+                    today_row = str(i + 2)
                     break
             except ValueError as e:
                 # don't care if blank, move on to next one if it's a date
                 continue
-        if yesterday_column is None or today_column is None:
-            # todo: if date column doesn't exist, add it
-            # todo: copy formulas to new columns
+        if yesterday_row is None or today_row is None:
+            # todo: if date row doesn't exist, add it
+            # todo: copy formulas to new row
             pass
 
-        calories_in_range = format_to_range(yesterday_column, CALORIES_IN_ROW)
-        fitbit_tdee_range = format_to_range(yesterday_column, FITBIT_CALORIES_OUT)
-        weight_range = format_to_range(today_column, WEIGHT_ROW)
-        new_tdee_range = format_to_range(today_column, NEW_TDEE_ROW)
+        calories_in_range = format_to_range(CALORIES_IN_COLUMN, yesterday_row)
+        fitbit_tdee_range = format_to_range(FITBIT_CALORIES_OUT_COLUMN, yesterday_row)
+        weight_range = format_to_range(WEIGHT_COLUMN, today_row)
+        new_tdee_range = format_to_range(NEW_TDEE_COLUMN, today_row)
 
         print calories_in_range, fitbit_tdee_range, weight_range, new_tdee_range
 
