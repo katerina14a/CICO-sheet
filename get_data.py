@@ -25,20 +25,36 @@ class CalorieSummary:
         self.ACTIVITY_LEVEL = '1.2'  # sedentary
 
     def get_fitbit_data(self):
+        print "Getting calories in and calories out"
         self.calories_in, self.fitbit_calories_out = get_calorie_data()
-        self.weight, self.body_fat_percentage = get_weight_data()
         print self.calories_in, self.fitbit_calories_out
+        print "Getting weight and body fat percentage"
+        self.weight, self.body_fat_percentage = get_weight_data()
         print self.weight, self.body_fat_percentage
 
     def get_tdee(self):
+        print "Parsing TDEE website to get new TDEE"
         self.new_tdee = parse_tdee_website(self.AGE, self.GENDER, self.weight, self.HEIGHT_IN_INCHES,
                                            self.ACTIVITY_LEVEL, self.body_fat_percentage)
         print self.new_tdee
 
     def add_to_google_sheet(self):
-        if self.new_tdee is None or self.calories_in is None or self.fitbit_calories_out is None or self.weight is None:
-            raise Exception('One or more API calls failed.')
+        self.check_for_none()
+        print "Writing new values to Google Sheet"
         write_to_sheet(self.calories_in, self.fitbit_calories_out, self.weight, self.new_tdee)
+
+    def check_for_none(self):
+        none_values = []
+        if self.new_tdee is None:
+            none_values.append('new_tdee')
+        if self.calories_in is None:
+            none_values.append('calories_in')
+        if self.fitbit_calories_out is None:
+            none_values.append('fitbit_calories_out')
+        if self.weight is None:
+            none_values.append('weight')
+        if len(none_values) > 0:
+            raise Exception('One or more required fields are None: {}'.format(', '.join(none_values)))
 
 
 if __name__ == '__main__':

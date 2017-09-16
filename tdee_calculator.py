@@ -10,7 +10,7 @@ def parse_tdee_website(age, gender, pounds, height, activity_level, body_fat_per
     endpoint = 'https://tdeecalculator.net/result.php?s=imperial&age={}&g={}&lbs={}&in={}&act={}&bf={}&f=1'.format(
         age, gender, pounds, height, activity_level, body_fat_percentage
     )
-    print endpoint
+    print "Calling TDEE endpoint: {}".format(endpoint)
     r = requests.get(endpoint)
     soup = BeautifulSoup(r.text, 'html.parser')
     for i, e in enumerate(soup.find(id="tdee-cals").descendants):

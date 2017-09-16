@@ -25,8 +25,6 @@ ERROR_IN_API = "Error when making API call that I couldn't handle"
 
 # Get the config from the config file.  This is the access and refresh tokens
 def get_config():
-    print "Reading from the config file"
-
     # Open the file
     file_obj = open(token_file, 'r')
 
