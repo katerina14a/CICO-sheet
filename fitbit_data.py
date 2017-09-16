@@ -146,7 +146,7 @@ def make_request(endpoint):
         return json.loads(response_data)
     else:
         if response_data == TOKEN_REFRESHED_OK:
-            make_request(endpoint)
+            return make_request(endpoint)
         else:
             return None
 
